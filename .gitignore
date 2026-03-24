@@ -1,2 +1,4 @@
 
 .comate/
+.m2-local/
+target/

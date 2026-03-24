@@ -2,7 +2,7 @@ package com.bloodstar.fluxragcompute.tools;
 
 import com.bloodstar.fluxragcompute.dto.ToolPayloads.SqlExecutionRequest;
 import com.bloodstar.fluxragcompute.dto.ToolPayloads.ToolExecutionResult;
-import com.bloodstar.fluxragcompute.exception.UnsafeSqlException;
+import com.bloodstar.fluxragcompute.exception.BusinessException;
 import com.bloodstar.fluxragcompute.service.SecuritySandboxService;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,7 +39,7 @@ public class SqlExecutorTool {
                 result.put("rowCount", rows.size());
                 result.put("rows", rows);
                 return ToolExecutionResult.success("SQL 执行成功", result);
-            } catch (UnsafeSqlException ex) {
+            } catch (BusinessException ex) {
                 return ToolExecutionResult.failure(ex.getMessage());
             } catch (Exception ex) {
                 return ToolExecutionResult.failure("SQL 执行失败: " + ex.getMessage());

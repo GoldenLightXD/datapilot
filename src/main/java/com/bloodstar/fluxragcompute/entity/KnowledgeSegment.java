@@ -14,6 +14,8 @@ public class KnowledgeSegment {
 
     private Long documentId;
 
+    private Integer segmentIndex;
+
     private String content;
 
     private String vectorId;

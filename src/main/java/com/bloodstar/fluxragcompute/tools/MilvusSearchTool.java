@@ -26,10 +26,8 @@ public class MilvusSearchTool {
             }
             int topK = request.topK() == null ? 4 : Math.max(1, Math.min(request.topK(), 8));
             List<Document> documents = vectorStore.similaritySearch(
-                    SearchRequest.builder()
-                            .query(request.keyword())
-                            .topK(topK)
-                            .build()
+                    SearchRequest.query(request.keyword())
+                            .withTopK(topK)
             );
             List<Map<String, Object>> rows = documents.stream()
                     .map(document -> Map.<String, Object>of(

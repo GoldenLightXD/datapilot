@@ -17,7 +17,7 @@ public class DocumentMqListener {
 
     @RabbitListener(queues = MqConstants.DOCUMENT_QUEUE)
     public void onMessage(DocumentIngestMessage message) {
-        log.info("Receive document ingest message: {}", message.getFilePath());
+        log.info("Receive document ingest message. documentId={}, objectKey={}", message.getDocumentId(), message.getObjectKey());
         documentIngestService.ingest(message);
     }
 }

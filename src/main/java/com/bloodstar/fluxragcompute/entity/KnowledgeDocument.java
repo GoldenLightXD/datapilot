@@ -17,7 +17,15 @@ public class KnowledgeDocument {
 
     private String fileUrl;
 
+    private String storageProvider;
+
+    private String objectKey;
+
+    private String contentType;
+
     private String status;
+
+    private String failureReason;
 
     private LocalDateTime createTime;
 }

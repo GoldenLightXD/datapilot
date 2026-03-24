@@ -1,35 +1,31 @@
 package com.bloodstar.fluxragcompute.controller;
 
-import com.bloodstar.fluxragcompute.constant.MqConstants;
-import com.bloodstar.fluxragcompute.dto.ApiResponse;
-import com.bloodstar.fluxragcompute.dto.DocumentIngestMessage;
-import jakarta.validation.Valid;
-import java.util.Map;
+import com.bloodstar.fluxragcompute.common.BaseResponse;
+import com.bloodstar.fluxragcompute.common.ResultUtils;
+import com.bloodstar.fluxragcompute.dto.DocumentUploadResponse;
+import com.bloodstar.fluxragcompute.service.DocumentUploadService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
- * curl -X POST 'http://localhost:8081/api/documents/ingest' \
- *   -H 'Content-Type: application/json' \
- *   -d '{"filePath":"/absolute/path/to/architecture.txt"}'
+ * curl -X POST 'http://localhost:8081/api/documents/upload' \
+ *   -H 'Content-Type: multipart/form-data' \
+ *   -F 'file=@/absolute/path/to/architecture.pdf'
  */
 @RestController
 @RequestMapping("/api/documents")
 @RequiredArgsConstructor
 public class DocumentController {
 
-    private final RabbitTemplate rabbitTemplate;
+    private final DocumentUploadService documentUploadService;
 
-    @PostMapping("/ingest")
-    public ApiResponse<Map<String, String>> ingest(@Valid @RequestBody DocumentIngestMessage message) {
-        rabbitTemplate.convertAndSend(MqConstants.DOCUMENT_EXCHANGE, MqConstants.DOCUMENT_ROUTING_KEY, message);
-        return ApiResponse.ok(Map.of(
-                "status", "QUEUED",
-                "filePath", message.getFilePath()
-        ));
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public BaseResponse<DocumentUploadResponse> upload(@RequestPart("file") MultipartFile file) {
+        return ResultUtils.success(documentUploadService.uploadAndDispatch(file));
     }
 }

@@ -1,6 +1,7 @@
 package com.bloodstar.fluxragcompute.controller;
 
-import com.bloodstar.fluxragcompute.dto.ApiResponse;
+import com.bloodstar.fluxragcompute.common.BaseResponse;
+import com.bloodstar.fluxragcompute.common.ResultUtils;
 import com.bloodstar.fluxragcompute.dto.ChatRequest;
 import com.bloodstar.fluxragcompute.dto.ChatResponse;
 import com.bloodstar.fluxragcompute.service.CopilotService;
@@ -28,7 +29,7 @@ public class CopilotController {
     private final CopilotService copilotService;
 
     @PostMapping("/chat")
-    public ApiResponse<ChatResponse> chat(@Valid @RequestBody ChatRequest request) {
-        return ApiResponse.ok(copilotService.chat(request.getMessage()));
+    public BaseResponse<ChatResponse> chat(@Valid @RequestBody ChatRequest request) {
+        return ResultUtils.success(copilotService.chat(request.getMessage()));
     }
 }

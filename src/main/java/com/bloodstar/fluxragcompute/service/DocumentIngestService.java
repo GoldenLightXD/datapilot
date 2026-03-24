@@ -1,15 +1,15 @@
 package com.bloodstar.fluxragcompute.service;
 
+import com.bloodstar.fluxragcompute.common.ErrorCode;
 import com.bloodstar.fluxragcompute.dto.DocumentIngestMessage;
+import com.bloodstar.fluxragcompute.dto.ParsedDocument;
 import com.bloodstar.fluxragcompute.entity.KnowledgeDocument;
 import com.bloodstar.fluxragcompute.entity.KnowledgeSegment;
+import com.bloodstar.fluxragcompute.exception.BusinessException;
 import com.bloodstar.fluxragcompute.mapper.KnowledgeDocumentMapper;
 import com.bloodstar.fluxragcompute.mapper.KnowledgeSegmentMapper;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.LocalDateTime;
+import com.bloodstar.fluxragcompute.utils.ThrowUtils;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,23 +32,21 @@ public class DocumentIngestService {
 
     private final KnowledgeDocumentMapper knowledgeDocumentMapper;
     private final KnowledgeSegmentMapper knowledgeSegmentMapper;
+    private final ObjectStorageService objectStorageService;
+    private final DocumentParsingService documentParsingService;
+    private final DocumentSplittingService documentSplittingService;
     private final VectorStore vectorStore;
 
     @Transactional(rollbackFor = Exception.class)
     public Long ingest(DocumentIngestMessage message) {
-        Path path = Path.of(message.getFilePath());
-        KnowledgeDocument document = createDocument(path);
-        try {
-            if (!Files.exists(path)) {
-                markFailed(document.getId(), "文件不存在");
-                throw new IllegalStateException("文件不存在: " + path);
-            }
-            String content = Files.readString(path, StandardCharsets.UTF_8);
-            if (!StringUtils.hasText(content)) {
-                markFailed(document.getId(), "文件为空");
-                throw new IllegalStateException("文件为空: " + path);
-            }
-            List<String> segments = splitText(content, 500, 100);
+        KnowledgeDocument document = knowledgeDocumentMapper.selectById(message.getDocumentId());
+        ThrowUtils.throwIf(document == null, ErrorCode.NOT_FOUND_ERROR, "文档记录不存在，documentId=" + message.getDocumentId());
+        try (InputStream inputStream = objectStorageService.download(message.getObjectKey())) {
+            updateDocumentStatus(document.getId(), STATUS_PROCESSING, null);
+            ParsedDocument parsedDocument = documentParsingService.parse(inputStream, message.getOriginalFilename(), message.getContentType());
+            List<String> segments = documentSplittingService.split(parsedDocument.getContent());
+            ThrowUtils.throwIf(segments.isEmpty(), ErrorCode.OPERATION_ERROR, "文档切分结果为空");
+
             List<Document> vectorDocuments = new ArrayList<>(segments.size());
             List<KnowledgeSegment> segmentEntities = new ArrayList<>(segments.size());
             for (int i = 0; i < segments.size(); i++) {
@@ -58,10 +56,12 @@ public class DocumentIngestService {
                         "documentId", document.getId(),
                         "vectorId", vectorId,
                         "segmentIndex", i,
-                        "fileName", document.getFileName()
+                        "fileName", document.getFileName(),
+                        "objectKey", document.getObjectKey()
                 )));
                 KnowledgeSegment segment = new KnowledgeSegment();
                 segment.setDocumentId(document.getId());
+                segment.setSegmentIndex(i);
                 segment.setContent(segmentContent);
                 segment.setVectorId(vectorId);
                 segmentEntities.add(segment);
@@ -70,61 +70,27 @@ public class DocumentIngestService {
             for (KnowledgeSegment segmentEntity : segmentEntities) {
                 knowledgeSegmentMapper.insert(segmentEntity);
             }
-            updateStatus(document.getId(), STATUS_COMPLETED);
+            updateDocumentStatus(document.getId(), STATUS_COMPLETED, null);
             return document.getId();
-        } catch (IOException ex) {
-            markFailed(document.getId(), "读取文件失败");
-            throw new IllegalStateException("读取文件失败: " + path, ex);
-        } catch (Exception ex) {
+        } catch (BusinessException ex) {
             markFailed(document.getId(), ex.getMessage());
             throw ex;
+        } catch (Exception ex) {
+            markFailed(document.getId(), "文档入库失败");
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "文档入库失败，请检查日志");
         }
     }
 
-    public List<String> splitText(String content, int windowSize, int overlap) {
-        if (!StringUtils.hasText(content)) {
-            return List.of();
-        }
-        if (windowSize <= overlap) {
-            throw new IllegalArgumentException("windowSize 必须大于 overlap");
-        }
-        if (content.length() <= windowSize) {
-            return List.of(content.trim());
-        }
-        List<String> segments = new ArrayList<>();
-        int step = windowSize - overlap;
-        for (int start = 0; start < content.length(); start += step) {
-            int end = Math.min(content.length(), start + windowSize);
-            String segment = content.substring(start, end).trim();
-            if (StringUtils.hasText(segment)) {
-                segments.add(segment);
-            }
-            if (end >= content.length()) {
-                break;
-            }
-        }
-        return segments.isEmpty() ? List.of(content.trim()) : segments;
-    }
-
-    private KnowledgeDocument createDocument(Path path) {
-        KnowledgeDocument document = new KnowledgeDocument();
-        document.setFileName(path.getFileName() == null ? path.toString() : path.getFileName().toString());
-        document.setFileUrl(path.toAbsolutePath().toString());
-        document.setStatus(STATUS_PROCESSING);
-        document.setCreateTime(LocalDateTime.now());
-        knowledgeDocumentMapper.insert(document);
-        return document;
-    }
-
-    private void updateStatus(Long documentId, String status) {
+    private void updateDocumentStatus(Long documentId, String status, String failureReason) {
         KnowledgeDocument update = new KnowledgeDocument();
         update.setId(documentId);
         update.setStatus(status);
+        update.setFailureReason(failureReason);
         knowledgeDocumentMapper.updateById(update);
     }
 
     private void markFailed(Long documentId, String reason) {
         log.error("Document ingest failed. documentId={}, reason={}", documentId, reason);
-        updateStatus(documentId, STATUS_FAILED);
+        updateDocumentStatus(documentId, STATUS_FAILED, StringUtils.hasText(reason) ? reason : "未知错误");
     }
 }
