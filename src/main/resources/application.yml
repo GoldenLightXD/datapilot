@@ -1,0 +1,87 @@
+server:
+  port: 8081
+
+spring:
+  threads:
+    virtual:
+      enabled: true
+  application:
+    name: datapilot
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/datapilot?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: root
+    password: root
+    druid:
+      initial-size: 1
+      min-idle: 1
+      max-active: 8
+      max-wait: 60000
+      validation-query: SELECT 1
+      test-on-borrow: false
+      test-while-idle: true
+      filters: stat,wall,slf4j
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/schema.sql
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+  ai:
+    openai:
+      api-key: ${AI_KEY:demo-key}
+      base-url: https://api-inference.modelscope.cn
+      chat:
+        options:
+          model: Qwen/Qwen2.5-7B-Instruct
+          temperature: 0.2
+      embedding:
+        options:
+          model: text-embedding-v3
+    vectorstore:
+      milvus:
+        client:
+          host: localhost
+          port: 19530
+          username:
+          password:
+          connect-timeout-ms: 10000
+        database-name: default
+        collection-name: datapilot_knowledge_segment
+        embedding-dimension: 1536
+        index-type: IVF_FLAT
+        metric-type: COSINE
+        initialize-schema: true
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: assign_id
+
+logging:
+  level:
+    com.bloodstar.fluxragcompute: INFO
+    org.springframework.ai: INFO
+
+datapilot:
+  mq:
+    document-exchange: datapilot.document.exchange
+    document-queue: datapilot.document.queue
+    document-routing-key: datapilot.document.ingest
+  query:
+    max-limit: 100
