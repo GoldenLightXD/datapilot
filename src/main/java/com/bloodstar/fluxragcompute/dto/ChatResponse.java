@@ -7,9 +7,7 @@ import lombok.Data;
 @Builder
 public class ChatResponse {
 
-    private String target;
-
-    private String reason;
+    private String conversationId;
 
     private String answer;
 }

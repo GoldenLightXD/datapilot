@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * curl -X POST 'http://localhost:8081/api/chat' \
  *   -H 'Content-Type: application/json' \
- *   -d '{"message":"帮我找出 slow_query_log 里最慢的 10 条 SQL"}'
+ *   -d '{"message":"帮我找出最慢的10条SQL","conversationId":"abc-123"}'
  */
 @RestController
 @RequestMapping("/api")
@@ -30,6 +30,7 @@ public class CopilotController {
 
     @PostMapping("/chat")
     public BaseResponse<ChatResponse> chat(@Valid @RequestBody ChatRequest request) {
-        return ResultUtils.success(copilotService.chat(request.getMessage()));
+        return ResultUtils.success(
+                copilotService.chat(request.getConversationId(), request.getMessage()));
     }
 }

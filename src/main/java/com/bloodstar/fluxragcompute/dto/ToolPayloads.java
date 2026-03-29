@@ -11,10 +11,10 @@ public final class ToolPayloads {
     public record MilvusSearchRequest(String keyword, Integer topK) {
     }
 
-    public record SchemaReadRequest(String tableName) {
+    public record SchemaReadRequest(String instanceId, String tableName) {
     }
 
-    public record SqlExecutionRequest(String sql) {
+    public record SqlExecutionRequest(String instanceId, String sql) {
     }
 
     public record ToolExecutionResult(boolean success, String message, Object data) {
@@ -31,5 +31,14 @@ public final class ToolPayloads {
     }
 
     public record RagContext(List<String> snippets) {
+    }
+
+    public record RagAgentRequest(String question) {
+    }
+
+    public record DbaAgentRequest(String question, String instanceId) {
+    }
+
+    public record AgentResponse(String answer) {
     }
 }

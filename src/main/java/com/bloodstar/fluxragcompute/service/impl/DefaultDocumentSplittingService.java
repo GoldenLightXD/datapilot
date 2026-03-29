@@ -39,8 +39,8 @@ public class DefaultDocumentSplittingService implements DocumentSplittingService
             List<Document> documents = splitter.apply(List.of(new Document(content)));
             List<String> chunks = new ArrayList<>();
             for (Document document : documents) {
-                if (StringUtils.hasText(document.getContent())) {
-                    chunks.add(document.getContent().trim());
+                if (StringUtils.hasText(document.getText())) {
+                    chunks.add(document.getText().trim());
                 }
             }
             return chunks;

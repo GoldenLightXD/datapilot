@@ -58,10 +58,7 @@ spring:
     vectorstore:
       milvus:
         client:
-          host: localhost
-          port: 19530
-          username:
-          password:
+          uri: http://localhost:19530
           connect-timeout-ms: 10000
         database-name: default
         collection-name: datapilot_knowledge_segment

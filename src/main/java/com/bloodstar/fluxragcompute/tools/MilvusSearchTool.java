@@ -18,24 +18,30 @@ import org.springframework.util.StringUtils;
 public class MilvusSearchTool {
 
     @Bean("milvusSearchTool")
-    @Description("根据关键词检索知识库片段，返回最相关的文档内容和元数据")
+    @Description("根据关键词检索知识库片段，返回最相关的文档内容和元数据。参数：keyword - 检索关键词，topK - 返回结果数量(可选，默认4)")
     public Function<MilvusSearchRequest, ToolExecutionResult> milvusSearchTool(VectorStore vectorStore) {
         return request -> {
-            if (request == null || !StringUtils.hasText(request.keyword())) {
-                return ToolExecutionResult.failure("检索关键词不能为空");
+            try {
+                if (request == null || !StringUtils.hasText(request.keyword())) {
+                    return ToolExecutionResult.failure("检索关键词不能为空");
+                }
+                int topK = request.topK() == null ? 4 : Math.max(1, Math.min(request.topK(), 8));
+                List<Document> documents = vectorStore.similaritySearch(
+                        SearchRequest.builder()
+                                .query(request.keyword())
+                                .topK(topK)
+                                .build()
+                );
+                List<Map<String, Object>> rows = documents.stream()
+                        .map(document -> Map.<String, Object>of(
+                                "content", document.getText(),
+                                "metadata", document.getMetadata() == null ? Map.of() : document.getMetadata()
+                        ))
+                        .collect(Collectors.toList());
+                return ToolExecutionResult.success("检索完成", rows);
+            } catch (Exception ex) {
+                return ToolExecutionResult.failure("知识库检索失败: " + ex.getMessage());
             }
-            int topK = request.topK() == null ? 4 : Math.max(1, Math.min(request.topK(), 8));
-            List<Document> documents = vectorStore.similaritySearch(
-                    SearchRequest.query(request.keyword())
-                            .withTopK(topK)
-            );
-            List<Map<String, Object>> rows = documents.stream()
-                    .map(document -> Map.<String, Object>of(
-                            "content", document.getContent(),
-                            "metadata", document.getMetadata() == null ? Map.of() : document.getMetadata()
-                    ))
-                    .collect(Collectors.toList());
-            return ToolExecutionResult.success("检索完成", rows);
         };
     }
 }

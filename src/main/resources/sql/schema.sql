@@ -37,3 +37,15 @@ CREATE TABLE IF NOT EXISTS slow_query_log (
     INDEX idx_slow_query_log_happen_time (happen_time),
     INDEX idx_slow_query_log_user (user)
 );
+
+CREATE TABLE IF NOT EXISTS target_datasource (
+    id          BIGINT       PRIMARY KEY AUTO_INCREMENT,
+    instance_id VARCHAR(64)  NOT NULL UNIQUE COMMENT '实例标识，如 db-test-01',
+    name        VARCHAR(128) NOT NULL COMMENT '显示名称',
+    url         VARCHAR(512) NOT NULL COMMENT 'JDBC URL',
+    username    VARCHAR(128) NOT NULL,
+    password    VARCHAR(256) NOT NULL COMMENT '加密存储',
+    status      TINYINT      NOT NULL DEFAULT 1 COMMENT '1-启用 0-禁用',
+    create_time DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='目标数据源配置';

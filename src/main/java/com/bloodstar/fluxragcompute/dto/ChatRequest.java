@@ -8,4 +8,6 @@ public class ChatRequest {
 
     @NotBlank(message = "message 不能为空")
     private String message;
+
+    private String conversationId;
 }

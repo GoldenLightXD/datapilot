@@ -1,28 +1,25 @@
 package com.bloodstar.fluxragcompute.service;
 
-import com.bloodstar.fluxragcompute.agent.DbaAgent;
-import com.bloodstar.fluxragcompute.agent.RagAgent;
-import com.bloodstar.fluxragcompute.agent.RouterAgent;
+import com.bloodstar.fluxragcompute.agent.SupervisorAgent;
 import com.bloodstar.fluxragcompute.dto.ChatResponse;
-import com.bloodstar.fluxragcompute.dto.RouteDecision;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
 public class CopilotService {
 
-    private final RouterAgent routerAgent;
-    private final RagAgent ragAgent;
-    private final DbaAgent dbaAgent;
+    private final SupervisorAgent supervisorAgent;
 
-    public ChatResponse chat(String message) {
-        RouteDecision decision = routerAgent.route(message);
-        String target = decision.normalizedTarget();
-        String answer = "DBA".equals(target) ? dbaAgent.answer(message) : ragAgent.answer(message);
+    public ChatResponse chat(String conversationId, String message) {
+        if (!StringUtils.hasText(conversationId)) {
+            conversationId = UUID.randomUUID().toString();
+        }
+        String answer = supervisorAgent.chat(conversationId, message);
         return ChatResponse.builder()
-                .target(target)
-                .reason(decision.getReason())
+                .conversationId(conversationId)
                 .answer(answer)
                 .build();
     }
